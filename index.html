@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1020">
+  <title>工创小车 · BLE 调参台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">RC</div>
+        <div>
+          <h1>工创小车 <span>BLE 调参台</span></h1>
+          <p>STM32F103 · DX-BT24 · 115200 8N1</p>
+        </div>
+      </div>
+
+      <div class="conn-actions">
+        <span id="connBadge" class="badge badge-off">未连接</span>
+        <label class="all-devices">
+          <input id="allDevices" type="checkbox">
+          显示全部设备
+        </label>
+        <button id="connectBtn" class="btn btn-primary" type="button">连接蓝牙</button>
+        <button id="disconnectBtn" class="btn btn-ghost" type="button" disabled>断开</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="unsupported" class="notice hidden">
+        <strong>当前浏览器不支持 Web Bluetooth。</strong>
+        请使用 Android Chrome，并通过 HTTPS 打开本页面；<code>file://</code> 和普通 <code>http://</code> 都不行。
+      </section>
+
+      <section class="hero">
+        <section class="card status-main">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">实时状态</span>
+              <h2>电机输出</h2>
+            </div>
+            <span id="lastUpdate" class="muted">等待数据</span>
+          </div>
+
+          <div class="big-metrics">
+            <div class="metric">
+              <span class="metric-label">当前占空比</span>
+              <div class="metric-value"><strong id="dutyVal">--</strong><span class="unit">‰</span></div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">目标速度</span>
+              <div class="metric-value"><strong id="tgtVal">--</strong><span class="unit">‰</span></div>
+            </div>
+            <div class="metric">
+              <span class="metric-label">TIM2 CCR</span>
+              <div class="metric-value"><strong id="ccrVal">--</strong><span class="unit">/399</span></div>
+            </div>
+          </div>
+
+          <div class="status-chips">
+            <span id="stateChip" class="chip">ST --</span>
+            <span id="lockChip" class="chip">LOCK --</span>
+            <span id="streamChip" class="chip">STREAM --</span>
+          </div>
+        </section>
+
+        <section class="card config-summary">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">当前曲线参数</span>
+              <h2>启动配置</h2>
+            </div>
+          </div>
+          <div class="mini-grid">
+            <div><span>ARM</span><b id="sumArm">--</b></div>
+            <div><span>ARMMS</span><b id="sumArmMs">--</b></div>
+            <div><span>BRK</span><b id="sumBrk">--</b></div>
+            <div><span>BRKMS</span><b id="sumBrkMs">--</b></div>
+            <div><span>SMS</span><b id="sumSms">--</b></div>
+            <div><span>SLEW</span><b id="sumSlew">--</b></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="card chart-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">实时曲线</span>
+            <h2>占空比 / 目标速度</h2>
+          </div>
+          <div class="legend">
+            <span class="dot duty"></span>DUTY
+            <span class="dot tgt"></span>TGT
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="chart"></canvas>
+          <div id="chartEmpty" class="chart-empty">连接后打开数据流，曲线会出现在这里</div>
+        </div>
+        <div class="chart-foot">
+          <span id="sampleInfo">0 个采样</span>
+          <span>窗口 60 s</span>
+        </div>
+      </section>
+
+      <section class="grid-2">
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">发车前</span>
+              <h2>参数设置</h2>
+            </div>
+            <span id="lockHint" class="hint">连接后可修改</span>
+          </div>
+
+          <div id="params" class="params"></div>
+
+          <div class="actions">
+            <button id="applyBtn" class="btn btn-primary" type="button" disabled>应用全部</button>
+            <button id="readBtn" class="btn" type="button" disabled>读取当前</button>
+            <button id="defaultBtn" class="btn btn-ghost" type="button" disabled>恢复默认</button>
+          </div>
+          <p class="fineprint">发车后固件会锁定目标，<code>SET</code> 返回 <code>ERR LOCKED</code>；网页会自动禁用参数。</p>
+        </section>
+
+        <section class="card">
+          <div class="card-head">
+            <div>
+              <span class="eyebrow">数据流</span>
+              <h2>采样控制</h2>
+            </div>
+          </div>
+
+          <div class="stream-row">
+            <label for="rateSelect">周期</label>
+            <select id="rateSelect">
+              <option value="100">100 ms</option>
+              <option value="200" selected>200 ms</option>
+              <option value="500">500 ms</option>
+              <option value="1000">1000 ms</option>
+            </select>
+            <button id="streamOnBtn" class="btn btn-primary" type="button" disabled>开始</button>
+            <button id="streamOffBtn" class="btn" type="button" disabled>停止</button>
+          </div>
+
+          <div class="stream-row">
+            <button id="getBtn" class="btn btn-wide" type="button" disabled>立即读取一次 GET</button>
+          </div>
+
+          <div class="adv">
+            <label for="rawCmd">高级命令</label>
+            <div class="adv-row">
+              <input id="rawCmd" type="text" placeholder="PING / GET / STREAM 0" autocomplete="off" spellcheck="false" disabled>
+              <button id="rawSendBtn" class="btn" type="button" disabled>发送</button>
+            </div>
+          </div>
+
+          <p class="fineprint"><code>STREAM 1</code> 会占用主循环约 10 ms/行；比赛时建议停止数据流。</p>
+        </section>
+      </section>
+
+      <section class="card log-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">通信日志</span>
+            <h2>TX / RX</h2>
+          </div>
+          <button id="clearLogBtn" class="btn btn-ghost" type="button">清空</button>
+        </div>
+        <div id="log" class="log" role="log" aria-live="polite"></div>
+      </section>
+
+      <details class="card help">
+        <summary>使用说明 / 常见问题</summary>
+        <div class="help-body">
+          <p><b>必须用 Android Chrome，并通过 HTTPS 打开。</b> Web Bluetooth 在 <code>file://</code> 和普通 <code>http://</code> 下不可用。</p>
+          <p>DX-BT24 默认串口是 9600，需先用 USB-TTL 发 <code>AT+BAUD7</code> 改成 115200 并重启；STM32 的 USART1 也必须是 115200 8N1。</p>
+          <p>连接后会自动发 <code>STREAM 0</code>、<code>RATE 200</code>、<code>STREAM 1</code>、<code>GET</code>。不想自动开流时，连接后立刻点“停止”。</p>
+          <p>本页面不会发送发车命令；发车仍由车上按键完成。</p>
+        </div>
+      </details>
+    </main>
+
+    <footer>
+      <span>Web Bluetooth · DX-BT24 FFE0 / FFE1</span>
+      <span>固件协议：GET / SET / STREAM / RATE / DEFAULT</span>
+    </footer>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
