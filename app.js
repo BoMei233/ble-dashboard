@@ -19,7 +19,6 @@
     { key: 'BRKMS', name: '爬升时间', min: 1, max: 10000, step: 1, def: 600 },
     { key: 'SMS', name: 'S 曲线时间', min: 1, max: 10000, step: 1, def: 1200 },
     { key: 'SLEW', name: '运行过渡', min: 1, max: 10000, step: 1, def: 800 },
-    { key: 'TGT', name: '目标速度', min: 1, max: 1000, step: 1, def: 900 },
   ];
 
   const ST_MAP = {
@@ -75,6 +74,7 @@
     sampleInfo: $('sampleInfo'),
     params: $('params'),
     applyBtn: $('applyBtn'),
+    saveBtn: $('saveBtn'),
     readBtn: $('readBtn'),
     defaultBtn: $('defaultBtn'),
     lockHint: $('lockHint'),
@@ -289,6 +289,7 @@
     });
 
     els.applyBtn.disabled = paramsDisabled;
+    els.saveBtn.disabled = paramsDisabled;
     els.defaultBtn.disabled = paramsDisabled;
     els.readBtn.disabled = !connected;
     els.getBtn.disabled = !connected;
@@ -790,6 +791,12 @@
     toast('参数已发送');
   }
 
+  async function saveToCar() {
+    if (!state.connected || state.locked) return;
+    await send('SAVE');
+    toast('保存命令已发送');
+  }
+
   async function restoreDefault() {
     if (!state.connected || state.locked) return;
     await send('DEFAULT');
@@ -826,6 +833,7 @@
     els.disconnectBtn.addEventListener('click', disconnect);
 
     els.applyBtn.addEventListener('click', applyAll);
+    els.saveBtn.addEventListener('click', saveToCar);
     els.readBtn.addEventListener('click', () => send('GET'));
     els.defaultBtn.addEventListener('click', restoreDefault);
 

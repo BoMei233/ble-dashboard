@@ -69,12 +69,17 @@ SET BRK 320
 SET BRKMS 700
 SET SMS 1000
 SET SLEW 600
-SET TGT 700
+SAVE
+LOAD
 STREAM 1
 STREAM 0
 RATE 200
 DEFAULT
 ```
+
+`TGT` 现在由发车时的电位器决定，网页不再发送 `SET TGT`。  
+`SAVE` 把当前 6 个曲线参数写入内部 Flash；`LOAD` 重新从 Flash 加载。  
+`SET` 仍然只改 RAM，必须再点“保存到小车”才会掉电保存。
 
 状态行：
 
@@ -82,12 +87,13 @@ DEFAULT
 $CAR,ST=0,LOCK=0,TGT=900,DUTY=0,CCR=0,ARM=100,ARMMS=150,BRK=300,BRKMS=600,SMS=1200,SLEW=800
 ```
 
-发车后固件会锁定，`SET` / `DEFAULT` 返回：
+发车后固件会锁定，`SET` / `SAVE` / `LOAD` / `DEFAULT` 返回：
 
 ```text
 ERR LOCKED
 ```
 
+`DEFAULT` 只恢复 RAM 默认值；如果要让默认值也掉电保存，先 `DEFAULT`，再 `SAVE`。  
 网页会自动把参数控件置灰。
 
 ## 二、打开网页
@@ -180,9 +186,9 @@ GET
 | `BRKMS` | 线性爬升时间 | 1~10000 ms |
 | `SMS` | S 曲线时间 | 1~10000 ms |
 | `SLEW` | 运行中过渡时间 | 1~10000 ms |
-| `TGT` | 目标速度 | 1~1000 |
 
-“应用全部”会按顺序发送 7 条 `SET`，最后发 `GET` 刷新状态。
+“应用全部”会按顺序发送 6 条 `SET`，最后发 `GET` 刷新状态。  
+“保存到小车”发送 `SAVE`，把这 6 个曲线参数写入内部 Flash；`TGT` 由电位器控制，不保存。
 
 ## 五、常见问题
 
@@ -227,14 +233,14 @@ ERR LOCKED
 
 ### 6. 开数据流后电机变卡
 
-`STREAM 1` 使用阻塞串口发送，每行约 10ms。
+当前固件已把调试串口发送改成 DMA 环形队列，正常不会明显卡主循环。
 
 ```text
 比赛：点“停止”
 调参：RATE 500 或 1000
 ```
 
-彻底解决需要把固件调试串口改成 DMA/IT 非阻塞发送。
+如果仍然卡，先确认 USART1_TX DMA1_Channel4 已配置，且 `BspDebug_Update()` 在主循环里被调用。
 
 ## 六、BLE UUID
 
@@ -259,4 +265,5 @@ Write only           FFE2
 - 本页面不会发送发车/启动命令；
 - 发车仍由车上按键完成；
 - 参数只在 `LOCK=0` 时允许修改；
+- `SAVE` 只在电机停止且未锁定时执行；
 - 调试完成后建议断开蓝牙，避免手机意外发命令。

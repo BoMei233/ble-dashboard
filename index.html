@@ -120,10 +120,11 @@
 
           <div class="actions">
             <button id="applyBtn" class="btn btn-primary" type="button" disabled>应用全部</button>
+            <button id="saveBtn" class="btn" type="button" disabled>保存到小车</button>
             <button id="readBtn" class="btn" type="button" disabled>读取当前</button>
             <button id="defaultBtn" class="btn btn-ghost" type="button" disabled>恢复默认</button>
           </div>
-          <p class="fineprint">发车后固件会锁定目标，<code>SET</code> 返回 <code>ERR LOCKED</code>；网页会自动禁用参数。</p>
+          <p class="fineprint">目标速度 <code>TGT</code> 由发车时的电位器决定，网页不再下发；曲线参数点“保存到小车”写入 Flash，发车后 <code>SET</code> 返回 <code>ERR LOCKED</code>。</p>
         </section>
 
         <section class="card">
@@ -153,7 +154,7 @@
           <div class="adv">
             <label for="rawCmd">高级命令</label>
             <div class="adv-row">
-              <input id="rawCmd" type="text" placeholder="PING / GET / STREAM 0" autocomplete="off" spellcheck="false" disabled>
+              <input id="rawCmd" type="text" placeholder="PING / GET / SAVE / STREAM 0" autocomplete="off" spellcheck="false" disabled>
               <button id="rawSendBtn" class="btn" type="button" disabled>发送</button>
             </div>
           </div>
