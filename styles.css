@@ -370,6 +370,60 @@ h2 {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- remote control ---------- */
+
+.remote-card {
+  margin-bottom: 16px;
+}
+
+.remote-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 13px;
+}
+
+.remote-metric {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 14, 27, 0.32);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.remote-metric b {
+  color: var(--text);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.remote-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.remote-actions .btn {
+  flex: 1 1 150px;
+}
+
+.btn-danger {
+  color: #ffd9de;
+  border-color: rgba(255, 107, 122, 0.34);
+  background: rgba(255, 107, 122, 0.1);
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: rgba(255, 107, 122, 0.6);
+  background: rgba(255, 107, 122, 0.18);
+}
+
 /* ---------- chart ---------- */
 
 .chart-card {
@@ -841,6 +895,16 @@ footer {
 
   .legend {
     font-size: 10px;
+  }
+
+  .remote-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .remote-actions .btn {
+    min-width: 0;
+    padding: 0 9px;
   }
 
   .log-line {

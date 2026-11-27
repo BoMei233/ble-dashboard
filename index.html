@@ -85,6 +85,32 @@
         </section>
       </section>
 
+      <section class="card remote-card">
+        <div class="card-head">
+          <div>
+            <span class="eyebrow">远程控制</span>
+            <h2>发车 / 倒转 / 复位</h2>
+          </div>
+          <span id="remoteHint" class="hint">连接后可操作</span>
+        </div>
+
+        <div class="remote-state">
+          <span id="appStateChip" class="chip">APP --</span>
+          <span id="dirChip" class="chip">DIR --</span>
+          <span class="remote-metric">已行驶 <b id="runTime">--</b> ms</span>
+          <span class="remote-metric">倒转剩余 <b id="revRemain">--</b> ms</span>
+        </div>
+
+        <div class="remote-actions">
+          <button id="remoteStartBtn" class="btn btn-primary" type="button" disabled>遥控发车</button>
+          <button id="reverseBtn" class="btn" type="button" disabled>倒转 / 手动回零</button>
+          <button id="stopBtn" class="btn btn-danger" type="button" disabled>停止 / 打断倒转</button>
+          <button id="resetBtn" class="btn btn-ghost" type="button" disabled>回上电状态</button>
+        </div>
+
+        <p class="fineprint">未发车时点“倒转 / 手动回零”会低速持续倒转，点“停止”结束并保持就绪，方便反复调整凸轮。发车后至少前进 1s 才能自动倒转；自动倒转时间 = 已行驶时间 - 1s，完成后重新自检。</p>
+      </section>
+
       <section class="card chart-card">
         <div class="card-head">
           <div>
@@ -180,18 +206,18 @@
           <p><b>必须用 Android Chrome，并通过 HTTPS 打开。</b> Web Bluetooth 在 <code>file://</code> 和普通 <code>http://</code> 下不可用。</p>
           <p>DX-BT24 默认串口是 9600，需先用 USB-TTL 发 <code>AT+BAUD7</code> 改成 115200 并重启；STM32 的 USART1 也必须是 115200 8N1。</p>
           <p>连接后会自动发 <code>STREAM 0</code>、<code>RATE 200</code>、<code>STREAM 1</code>、<code>GET</code>。不想自动开流时，连接后立刻点“停止”。</p>
-          <p>本页面不会发送发车命令；发车仍由车上按键完成。</p>
+          <p>“遥控发车”只在自检完成、状态为“就绪”时有效。未发车时“倒转 / 手动回零”是低速持续倒转；发车后前进超过 1s 才是自动倒转。倒转中可随时点“停止 / 打断倒转”。</p>
         </div>
       </details>
     </main>
 
     <footer>
       <span>Web Bluetooth · DX-BT24 FFE0 / FFE1</span>
-      <span>固件协议：GET / SET / STREAM / RATE / DEFAULT</span>
+      <span>固件协议：START / REVERSE / STOP / RESET / GET / SET</span>
     </footer>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20261127"></script>
+  <script src="app.js?v=20261127bc"></script>
 </body>
 </html>

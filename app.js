@@ -27,6 +27,20 @@
     2: ['到目标', 'ready'],
   };
 
+  const APP_MAP = {
+    0: ['自检中', 'run'],
+    1: ['就绪', 'ready'],
+    2: ['运行中', 'run'],
+    3: ['倒转中', 'warn'],
+    4: ['自检故障', 'danger'],
+    5: ['等待语音', 'warn'],
+  };
+
+  const DIR_MAP = {
+    0: ['前进', 'ready'],
+    1: ['倒转', 'warn'],
+  };
+
   const CHART_WINDOW_MS = 60000;
   const decoder = new TextDecoder('utf-8');
   const encoder = new TextEncoder();
@@ -47,6 +61,10 @@
     history: [],
     lastStatus: null,
     dirtyParams: new Set(),
+    appState: null,
+    direction: 0,
+    runMs: 0,
+    revRemain: 0,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -64,6 +82,15 @@
     lockChip: $('lockChip'),
     streamChip: $('streamChip'),
     lastUpdate: $('lastUpdate'),
+    remoteHint: $('remoteHint'),
+    appStateChip: $('appStateChip'),
+    dirChip: $('dirChip'),
+    runTime: $('runTime'),
+    revRemain: $('revRemain'),
+    remoteStartBtn: $('remoteStartBtn'),
+    reverseBtn: $('reverseBtn'),
+    stopBtn: $('stopBtn'),
+    resetBtn: $('resetBtn'),
     sumArm: $('sumArm'),
     sumArmMs: $('sumArmMs'),
     sumBrk: $('sumBrk'),
@@ -336,10 +363,21 @@
 
     if (!connected) {
       setChip(els.stateChip, 'ST --');
+      setChip(els.appStateChip, 'APP --');
+      setChip(els.dirChip, 'DIR --');
+      els.runTime.textContent = '--';
+      els.revRemain.textContent = '--';
       els.dutyVal.textContent = '--';
       els.tgtVal.textContent = '--';
       els.ccrVal.textContent = '--';
+    } else if (state.appState === null) {
+      setChip(els.appStateChip, 'APP --');
+      setChip(els.dirChip, 'DIR --');
+      els.runTime.textContent = '--';
+      els.revRemain.textContent = '--';
     }
+
+    updateRemoteControls();
   }
 
   function setLocked(locked) {
@@ -347,6 +385,80 @@
     if (state.locked === next) return;
     state.locked = next;
     updateControls();
+  }
+
+  /* ------------------------------------------------------------------ *
+   * 远程控制：发车 / 倒转 / 停止 / 回上电状态
+   * ------------------------------------------------------------------ */
+
+  function updateRemoteControls() {
+    const connected = state.connected;
+    const app = state.appState;
+
+    els.remoteStartBtn.disabled = !connected || app !== 1;
+    els.reverseBtn.disabled =
+      !connected ||
+      !(app === 1 || (app === 2 && state.runMs > 1000));
+    els.stopBtn.disabled =
+      !connected || (app !== 2 && app !== 3 && app !== 5);
+    els.resetBtn.disabled = !connected;
+
+    if (!connected) {
+      els.remoteHint.textContent = '连接后可操作';
+    } else if (app === 0) {
+      els.remoteHint.textContent = '正在自检，等待就绪';
+    } else if (app === 1) {
+      els.remoteHint.textContent = '可发车，也可低速手动回零';
+    } else if (app === 2) {
+      els.remoteHint.textContent =
+        state.runMs > 1000 ? '运行中，可倒转' : '运行中，满 1s 后可倒转';
+    } else if (app === 3) {
+      els.remoteHint.textContent =
+        state.revRemain > 0 ? '自动倒转中，可随时停止' : '手动倒车中，点停止结束';
+    } else if (app === 4) {
+      els.remoteHint.textContent = '自检故障，检查模块后再复位';
+    } else if (app === 5) {
+      els.remoteHint.textContent = '等待“出发”播完';
+    } else {
+      els.remoteHint.textContent = '等待状态';
+    }
+  }
+
+  function updateRemoteStatus(status) {
+    state.appState = Number.isFinite(status.APP) ? status.APP : null;
+    state.direction = Number.isFinite(status.DIR) ? status.DIR : 0;
+    state.runMs = Number.isFinite(status.RUNMS) ? status.RUNMS : 0;
+    state.revRemain = Number.isFinite(status.REV) ? status.REV : 0;
+
+    const app = APP_MAP[state.appState] || ['未知', 'warn'];
+    const dir = DIR_MAP[state.direction] || ['未知', 'warn'];
+
+    setChip(
+      els.appStateChip,
+      state.appState === null ? 'APP --' : `APP ${app[0]}`,
+      state.appState === null ? '' : app[1],
+    );
+    setChip(
+      els.dirChip,
+      state.appState === null ? 'DIR --' : `DIR ${dir[0]}`,
+      state.appState === null ? '' : dir[1],
+    );
+
+    els.runTime.textContent = state.appState === null ? '--' : fmt(state.runMs);
+    els.revRemain.textContent =
+      state.appState === null ? '--' : fmt(state.revRemain);
+
+    updateRemoteControls();
+  }
+
+  async function remoteAction(command) {
+    if (!state.connected) {
+      toast('尚未连接蓝牙', true);
+      return;
+    }
+
+    await send(command);
+    await send('GET');
   }
 
   /* ------------------------------------------------------------------ *
@@ -429,6 +541,10 @@
       state.history = [];
       state.lastStatus = null;
       state.locked = false;
+      state.appState = null;
+      state.direction = 0;
+      state.runMs = 0;
+      state.revRemain = 0;
       clearDirtyParams();
 
       els.chartEmpty.classList.remove('hidden');
@@ -474,6 +590,10 @@
     state.connecting = false;
     state.locked = false;
     state.streaming = false;
+    state.appState = null;
+    state.direction = 0;
+    state.runMs = 0;
+    state.revRemain = 0;
     clearDirtyParams();
     state.server = null;
     state.service = null;
@@ -635,6 +755,7 @@
     els.sumSms.textContent = fmt(status.SMS);
     els.sumSlew.textContent = fmt(status.SLEW);
 
+    updateRemoteStatus(status);
     setParamValues(status);
     addPoint(status);
   }
@@ -870,6 +991,13 @@
     els.streamOnBtn.addEventListener('click', startStream);
     els.streamOffBtn.addEventListener('click', stopStream);
     els.getBtn.addEventListener('click', () => send('GET'));
+
+    els.remoteStartBtn.addEventListener('click', () => remoteAction('START'));
+    els.reverseBtn.addEventListener('click', () => {
+      remoteAction(state.appState === 2 ? 'REVERSE' : 'MANUAL');
+    });
+    els.stopBtn.addEventListener('click', () => remoteAction('STOP'));
+    els.resetBtn.addEventListener('click', () => remoteAction('RESET'));
 
     els.rateSelect.addEventListener('change', () => {
       const rate = Number(els.rateSelect.value) || 200;
