@@ -378,6 +378,7 @@
             filters: [
               { namePrefix: 'BT24' },
               { namePrefix: 'DX-BT24' },
+              { namePrefix: "FT's-car" },
               { namePrefix: 'DX' },
             ],
             optionalServices: [BLE.service],
