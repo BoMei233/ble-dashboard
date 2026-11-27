@@ -46,6 +46,7 @@
     txChain: Promise.resolve(),
     history: [],
     lastStatus: null,
+    dirtyParams: new Set(),
   };
 
   const $ = (id) => document.getElementById(id);
@@ -160,6 +161,14 @@
    * 参数 UI
    * ------------------------------------------------------------------ */
 
+  function markParamDirty(key) {
+    state.dirtyParams.add(key);
+  }
+
+  function clearDirtyParams() {
+    state.dirtyParams.clear();
+  }
+
   function buildParams() {
     const fragment = document.createDocumentFragment();
 
@@ -193,11 +202,13 @@
 
       range.addEventListener('input', () => {
         number.value = range.value;
+        markParamDirty(def.key);
       });
 
       number.addEventListener('input', () => {
         if (number.value !== '') {
           range.value = number.value;
+          markParamDirty(def.key);
         }
       });
 
@@ -209,6 +220,7 @@
         );
         number.value = String(Math.round(value));
         range.value = String(Math.round(value));
+        markParamDirty(def.key);
       });
 
       row.append(label, range, number);
@@ -245,7 +257,10 @@
       const row = paramRow(def.key);
       if (!row) continue;
 
-      // 用户正在输入时不要抢走光标/数值
+      // 用户改过、还没点“应用全部”时，状态流不能把滑块拉回去
+      if (state.dirtyParams.has(def.key)) continue;
+
+      // 正在输入时也不要抢走光标/数值
       if (row.contains(document.activeElement)) continue;
 
       const range = row.querySelector('.param-range');
@@ -414,6 +429,7 @@
       state.history = [];
       state.lastStatus = null;
       state.locked = false;
+      clearDirtyParams();
 
       els.chartEmpty.classList.remove('hidden');
       els.sampleInfo.textContent = '0 个采样';
@@ -458,6 +474,7 @@
     state.connecting = false;
     state.locked = false;
     state.streaming = false;
+    clearDirtyParams();
     state.server = null;
     state.service = null;
     state.rxChar = null;
@@ -773,6 +790,16 @@
    * 操作
    * ------------------------------------------------------------------ */
 
+  async function pushParams() {
+    const values = readParams();
+
+    for (const def of PARAM_DEFS) {
+      await send(`SET ${def.key} ${values[def.key]}`);
+    }
+
+    clearDirtyParams();
+  }
+
   async function applyAll() {
     if (!state.connected) return;
     if (state.locked) {
@@ -780,13 +807,8 @@
       return;
     }
 
-    const values = readParams();
     els.applyBtn.disabled = true;
-
-    for (const def of PARAM_DEFS) {
-      await send(`SET ${def.key} ${values[def.key]}`);
-    }
-
+    await pushParams();
     await send('GET');
     updateControls();
     toast('参数已发送');
@@ -794,12 +816,16 @@
 
   async function saveToCar() {
     if (!state.connected || state.locked) return;
+
+    // 保存前先把滑块当前值写进 RAM，避免保存到旧参数
+    await pushParams();
     await send('SAVE');
-    toast('保存命令已发送');
+    toast('参数已写入并保存');
   }
 
   async function restoreDefault() {
     if (!state.connected || state.locked) return;
+    clearDirtyParams();
     await send('DEFAULT');
     await send('GET');
   }
@@ -835,7 +861,10 @@
 
     els.applyBtn.addEventListener('click', applyAll);
     els.saveBtn.addEventListener('click', saveToCar);
-    els.readBtn.addEventListener('click', () => send('GET'));
+    els.readBtn.addEventListener('click', () => {
+      clearDirtyParams();
+      void send('GET');
+    });
     els.defaultBtn.addEventListener('click', restoreDefault);
 
     els.streamOnBtn.addEventListener('click', startStream);
